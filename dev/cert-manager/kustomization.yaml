@@ -1,0 +1,7 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base/cert-manager
+  - resources/external-secret-cloudflare-token.yaml
+  - resources/cluster-issuer-staging.yaml
