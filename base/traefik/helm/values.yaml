@@ -1,0 +1,117 @@
+# Notes:
+# - Activate this resolver by referencing it in your TLS entryPoints:
+#     entryPoints.websecure.http.tls.certResolver: letsencrypt-cloudflare
+# - When enabled, Traefik will automatically request and renew certificates for matching domains.
+# - If disabled, Traefik will not manage certificates; you must provide TLS secrets manually or use cert-manager.
+# - Make sure your Cloudflare API token/credentials are available in the Traefik pod for DNS-01 to work.
+#additionalArguments:
+#  # Define ACME resolver using HTTP-01 challenge (example)
+#  - '--certificatesresolvers.letsencrypt-cloudflare.acme.email=tu-email@dominio.com'
+#  # Path inside the Traefik container where certificates and keys are stored
+#  - '--certificatesresolvers.letsencrypt-cloudflare.acme.storage=/data/acme.json'
+#  # Use DNS-01 challenge with Cloudflare provider
+#  - '--certificatesresolvers.letsencrypt-cloudflare.acme.dnschallenge.provider=cloudflare'
+#  # Delay in seconds before checking if the DNS record has propagated
+#  - '--certificatesresolvers.letsencrypt-cloudflare.acme.dnschallenge.delaybeforecheck=30'
+#  # Optional: specify DNS resolvers for checking TXT record propagation
+#  - '--certificatesresolvers.letsencrypt-cloudflare.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53'
+
+api:
+  dashboard: true
+  insecure: true
+providers:
+  kubernetesGateway:
+    enabled: true
+  kubernetesIngress:
+    enabled: false
+
+gatewayClass:
+  enabled: true
+  name: traefik-dev
+
+ports:
+  # Defines the HTTP entry point named 'web'
+  web:
+    nodePort: 30000
+    redirections:
+      entryPoint:
+        to: websecure
+        scheme: https
+        permanent: true
+  # Defines the HTTPS entry point named 'websecure'
+  websecure:
+    nodePort: 30001
+
+gateway:
+  name: leonomano-website-gateway
+  namespace: traefik
+  listeners:
+    web:
+      namespacePolicy:
+        from: All
+    websecure:
+      port: '8443'
+      protocol: HTTPS
+      namespacePolicy:
+        from: All
+      mode: Terminate
+      certificateRefs:
+        - kind: Secret
+          name: traefik-cert-tls
+          namespace: traefik
+
+# Notes:
+# - Activate this resolver by specifying it in your TLS entryPoint:
+#     entryPoints.websecure.http.tls.certResolver: letsencrypt-cloudflare
+# - When enabled, Traefik will automatically request and renew certificates for matching domains.
+# - If disabled, Traefik will not manage certificates; you must provide TLS secrets manually or use cert-manager.
+# - Make sure your Cloudflare API token/credentials are available in the Traefik pod for DNS-01 to work.
+#certificatesResolvers:
+#  letsencrypt-cloudflare:
+#    acme:
+#      email: tu-email@dominio.com
+#      storage: /data/acme.json    # Path inside the Traefik container where certificates and keys are stored
+#      dnsChallenge:
+#        provider: cloudflare      # DNS provider to solve ACME DNS-01 challenges (Cloudflare API in this case)
+#        delayBeforeCheck: 30      # Delay (in seconds) before Traefik checks if the DNS record has propagated
+#        # Optional: custom DNS resolvers used by Traefik to verify TXT record propagation
+#        resolvers:
+#          - '1.1.1.1:53'
+#          - '8.8.8.8:53'
+
+ingressClass:
+  enabled: false
+
+persistence:
+  enabled: true
+  name: data
+  size: 1Gi
+  storageClass: ''
+
+ingressRoute:
+  dashboard:
+    enabled: true
+    matchRule: 'Host(`traefik.leonomano.com`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`) || Path(`/dashboard`))'
+    middlewares:
+      - name: dashboard-auth
+        namespace: traefik
+    entryPoints:
+      - web
+      - websecure
+
+service:
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: traefik.leonomano.com
+
+logs:
+  general:
+    level: DEBUG
+extraObjects:
+  - apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      name: dashboard-auth
+      namespace: traefik
+    spec:
+      basicAuth:
+        secret: traefik-dashboard-auth
