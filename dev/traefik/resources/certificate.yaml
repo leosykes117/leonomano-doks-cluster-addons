@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: traefik-cert
+  namespace: traefik
+spec:
+  secretName: traefik-cert-tls
+  dnsNames:
+    - leonomano.com
+    - "*.leonomano.com"
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
