@@ -1,0 +1,5 @@
+# cert-manager v1.15+ moved CRDs into templates/ specifically so they render
+# via "helm template" (not just "helm install"); crds.enabled makes that happen
+# here since we apply via kustomize+kubectl, not helm install/upgrade directly.
+crds:
+  enabled: true
