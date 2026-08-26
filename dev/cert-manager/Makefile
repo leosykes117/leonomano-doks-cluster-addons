@@ -2,6 +2,7 @@ SHELL := /bin/bash
 
 NAMESPACE ?= cert-manager
 KUSTOMIZE := kustomize
+CRD       := clusterissuers.cert-manager.io
 
 .PHONY: render apply diff delete clean
 
@@ -15,6 +16,17 @@ render:
 apply: render
 	@echo "🚀 Applying cert-manager manifests (Helm + Kustomize)..."
 	kubectl create namespace $(NAMESPACE) 2>/dev/null || true
+
+	@echo "1️⃣  Applying operator (CRDs + Deployments + webhook)..."
+	$(KUSTOMIZE) build ../../base/cert-manager | kubectl apply -f -
+
+	@echo "⏳ Waiting for CRD $(CRD) to be Established..."
+	kubectl wait --for=condition=Established crd/$(CRD) --timeout=90s
+
+	@echo "⏳ Waiting for the cert-manager webhook to be ready..."
+	kubectl -n $(NAMESPACE) rollout status deploy/cert-manager-webhook --timeout=120s
+
+	@echo "2️⃣  Applying full overlay (operator + ClusterIssuer + ExternalSecret)..."
 	$(KUSTOMIZE) build . | kubectl apply -f -
 
 install: apply
