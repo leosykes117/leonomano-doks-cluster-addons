@@ -2,6 +2,7 @@ SHELL := /bin/bash
 
 NAMESPACE ?= external-secrets
 KUSTOMIZE := kustomize
+CRD       := clustersecretstores.external-secrets.io
 
 .PHONY: render apply install-crds diff delete clean
 
@@ -9,23 +10,22 @@ KUSTOMIZE := kustomize
 render:
 	$(MAKE) -C ../../base/external-secrets-operator render
 
-## Apply patched manifests with Kustomize
-# NOTE: the "eso-dev-aws-creds" Secret referenced by
-# resources/cluster-secret-store-aws-ssm.yaml is NOT created here - it must
-# be materialized beforehand from Terraform's IAM outputs (see the
-# provision-doks.yml CI workflow in leonomano-doks-tg-infra).
-apply: render
+## ESO CRDs are not bundled by "helm template"; install separately.
+install-crds:
+	@echo "📦 Installing ESO CRDs..."
+	kubectl apply -f "https://raw.githubusercontent.com/external-secrets/external-secrets/v0.20.2/deploy/crds/bundle.yaml" --server-side
+	@echo "⏳ Waiting for CRD $(CRD) to be Established..."
+	kubectl wait --for=condition=Established crd/$(CRD) --timeout=90s
+
+# the "eso-dev-aws-creds" Secret referenced by
+# resources/cluster-secret-store-aws-ssm.yaml is NOT created here
+apply: render install-crds
 	@echo "🚀 Applying ESO manifests (Helm + Kustomize)..."
 	kubectl create namespace $(NAMESPACE) 2>/dev/null || true
 	$(KUSTOMIZE) build . | kubectl apply -f -
 
-install: apply install-crds
+install: apply
 	kubectl -n $(NAMESPACE) rollout status deploy/external-secrets --timeout=180s || true
-
-## ESO CRDs are not bundled by "helm template"; install separately
-install-crds:
-	@echo "📦 Installing ESO CRDs..."
-	kubectl apply -f "https://raw.githubusercontent.com/external-secrets/external-secrets/v0.20.2/deploy/crds/bundle.yaml" --server-side
 
 ## Show diff against cluster
 diff: render
