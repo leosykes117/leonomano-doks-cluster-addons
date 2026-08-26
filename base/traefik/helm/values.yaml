@@ -50,7 +50,7 @@ gateway:
       namespacePolicy:
         from: All
     websecure:
-      port: '8443'
+      port: 8443
       protocol: HTTPS
       namespacePolicy:
         from: All
@@ -86,12 +86,12 @@ persistence:
   enabled: true
   name: data
   size: 1Gi
-  storageClass: ''
+  storageClass: ""
 
 ingressRoute:
   dashboard:
     enabled: true
-    matchRule: 'Host(`traefik.leonomano.com`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`) || Path(`/dashboard`))'
+    matchRule: "Host(`traefik.leonomano.com`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`) || Path(`/dashboard`))"
     middlewares:
       - name: dashboard-auth
         namespace: traefik
