@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - ../../base/traefik
   - resources/certificate.yaml
+  - resources/traefik-dashboard-auth.yaml
