@@ -1,0 +1,22 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: dev-traefik-dashboard-auth
+  namespace: traefik
+spec:
+  refreshInterval: 24h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: aws-dev-parameter-store
+  target:
+    name: traefik-dashboard-auth
+    deletionPolicy: Delete
+    template:
+      type: kubernetes.io/basic-auth
+      data:
+        username: admin
+        password: "{{ .password }}"
+  data:
+    - secretKey: password
+      remoteRef:
+        key: /account-configuration/dev/doks-external-dns-cloudflare-token
