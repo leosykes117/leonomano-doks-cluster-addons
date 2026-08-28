@@ -19,4 +19,4 @@ spec:
   data:
     - secretKey: password
       remoteRef:
-        key: /account-configuration/dev/doks-external-dns-cloudflare-token
+        key: /account-configuration/dev/traefik/dashboard/auth/admin/password
