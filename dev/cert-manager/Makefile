@@ -26,8 +26,14 @@ apply: render
 	@echo "⏳ Waiting for the cert-manager webhook to be ready..."
 	kubectl -n $(NAMESPACE) rollout status deploy/cert-manager-webhook --timeout=120s
 
-	@echo "2️⃣  Applying full overlay (operator + ClusterIssuer + ExternalSecret)..."
-	$(KUSTOMIZE) build . | kubectl apply -f -
+	@echo "2️⃣  Applying full overlay (retrying: ESO's webhook may need a moment to be network-reachable)..."
+	@n=0; until [ $$n -ge 6 ]; do \
+		$(KUSTOMIZE) build . | kubectl apply -f - && break; \
+		n=$$((n+1)); \
+		echo "   ⚠️  Attempt $$n/6 failed, retrying in 5s..."; \
+		sleep 5; \
+	done; \
+	if [ $$n -ge 6 ]; then echo "❌ apply failed after 6 attempts"; exit 1; fi
 
 install: apply
 	kubectl -n $(NAMESPACE) rollout status deploy/cert-manager --timeout=180s || true
